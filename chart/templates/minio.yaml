@@ -1,0 +1,191 @@
+---
+apiVersion: v1
+data:
+  prometheus_config.config: |-
+    prometheus_config {
+      enable: true,
+      path: "/monitoring/metrics"
+    }
+kind: ConfigMap
+metadata:
+  name: promconfig
+  labels:
+    {{- include "minio.labels" . | nindent 4 }}
+---
+apiVersion: v1
+data:
+  models.config: |-
+    model_config_list {
+      config {
+        name: 'test_model'
+        base_path: 's3://models/saved_model'
+        model_platform: "tensorflow",
+        model_version_policy: {all: {}}
+      }
+    }
+kind: ConfigMap
+metadata:
+  name: modelconfig
+  labels:
+    {{- include "minio.labels" . | nindent 4 }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "minio.fullname" . }}
+spec:
+  accessModes:
+  - {{ .Values.minio.persistence.accessModes }}
+  resources:
+    requests:
+      storage: {{ .Values.minio.persistence.volumeSize }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "minio.fullname" . }}
+  labels:
+    {{- include "minio.labels" . | nindent 4 }}
+spec:
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+     {{- include "minio.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "minio.labels" . | nindent 8 }}
+    spec:
+      containers:
+      - name: minio
+        image: {{ .Values.image.minio.image }}
+        imagePullPolicy: IfNotPresent
+        resources: {}
+        args:
+        - server
+        - /storage
+        - --config-dir=/config
+        env:
+        - name: MINIO_ACCESS_KEY
+          value: "minio"
+        - name: MINIO_SECRET_KEY
+          value: "minio123"
+        ports:
+        - containerPort: 9000
+        volumeMounts:
+        - name: storage
+          mountPath: "/storage"
+        - name: config
+          mountPath: "/config"
+      volumes:
+      - name: storage
+        persistentVolumeClaim:
+          claimName: {{ include "minio.fullname" . }}
+      - name: config
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "minio.fullname" . }}
+  labels:
+    {{- include "minio.labels" . | nindent 4 }}
+spec:
+  ports:
+    - port: 9000
+      protocol: TCP
+  selector:
+    {{- include "minio.selectorLabels" . | nindent 6 }}
+  type: ClusterIP
+  sessionAffinity: None
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "minio.fullname" . }}
+  labels:
+    {{- include "minio.labels" . | nindent 4 }}
+spec:
+  template:
+    metadata:
+      name: minio-setup
+    spec:
+      restartPolicy: OnFailure
+      volumes:
+      - name: config
+        emptyDir: {}
+      - configMap:
+          defaultMode: 420
+          name: modelconfig
+        name: modelconfig
+      - configMap:
+          defaultMode: 420
+          name: promconfig
+        name: promconfig
+      containers:
+      - name: mc
+        image: minio/mc:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - /bin/sh
+        - -c
+        - "mc --config-dir=/config config host add velero http://{{ include "minio.fullname" . }}:9000 minio minio123 && mc --config-dir=/config mb --ignore-existing velero/models/ && mc --config-dir=/config cp /tmp/models.config velero/models && mc --config-dir=/config cp /tmp/prometheus_config.config velero/models"
+        volumeMounts:
+        - name: config
+          mountPath: "/config"
+        - mountPath: /tmp/models.config
+          name: modelconfig
+          subPath: models.config
+        - mountPath: /tmp/prometheus_config.config
+          name: promconfig
+          subPath: prometheus_config.config
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "minio.fullname" . }}-dataload
+  labels:
+    {{- include "minio.labels" . | nindent 4 }}
+spec:
+  template:
+    metadata:
+      name: minio-setup
+    spec:
+      restartPolicy: OnFailure
+      volumes:
+      - name: config
+        emptyDir: {}
+      containers:
+      - name: nsfw
+        image: quay.io/eformat/pet-battle-nsfw-model-data:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: MINIO_ACCESS_KEY
+          value: "minio"
+        - name: MINIO_SECRET_KEY
+          value: "minio123"
+        - name: MINIO_SERVICE_HOST
+          value: "{{ include "minio.fullname" . }}:9000"
+---
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: {{ include "minio.fullname" . }}
+  labels:
+    {{- include "minio.labels" . | nindent 4 }}
+  annotations:
+    openshift.io/host.generated: 'true'
+spec:
+  host: null
+  subdomain: ''
+  to:
+    kind: Service
+    name: {{ include "minio.fullname" . }}
+    weight: 100
+  port:
+    targetPort: 9000
+  tls:
+    insecureEdgeTerminationPolicy: Redirect
+    termination: edge
+  wildcardPolicy: None

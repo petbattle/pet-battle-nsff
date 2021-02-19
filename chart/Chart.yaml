@@ -1,0 +1,9 @@
+apiVersion: v2
+name: pet-battle-nsff
+description: A Helm chart for installing NSFF Pet Battle AI-ML components
+type: application
+version: 0.0.1
+appVersion: 0.0.1
+home: https://petbattle.github.io/helm-charts/
+maintainers:
+  - name: eformat

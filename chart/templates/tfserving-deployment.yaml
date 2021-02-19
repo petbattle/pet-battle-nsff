@@ -1,0 +1,103 @@
+{{- if not (lookup "operators.coreos.com/v1alpha1" "Subscription" "openshift-serverless" "serverless-operator" ) }}
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: {{ include "tfserving.fullname" . }}
+  labels:
+    {{- include "tfserving.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "tfserving.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "tfserving.labels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: tensorflowserving
+          env:
+            - name: S3_LOCATION
+              value: {{ include "minio.fullname" . }}:9000
+            - name: AWS_ACCESS_KEY_ID
+              value: minio
+            - name: AWS_SECRET_ACCESS_KEY
+              value: minio123
+            - name: AWS_REGION
+              value: us-east-1
+            - name: S3_REGION
+              value: us-east-1
+            - name: S3_ENDPOINT
+              value: {{ include "minio.fullname" . }}:9000
+            - name: S3_USE_HTTPS
+              value: "0"
+            - name: S3_VERIFY_SSL
+              value: "0"
+            - name: AWS_LOG_LEVEL
+              value: "3"
+          ports:
+            - containerPort: 8500
+              protocol: TCP
+            - containerPort: 8501
+              protocol: TCP  
+          imagePullPolicy: IfNotPresent
+          image: 'tensorflow/serving'
+          args: ["tensorflow_model_server --model_config_file=s3://models/models.config --monitoring_config_file=s3://models/prometheus_config.config --rest_api_port=8501"]
+          command: ["/bin/sh", "-c"]
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+      securityContext: {}
+      schedulerName: default-scheduler
+  strategy:
+    type: Recreate
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: {{ include "tfserving.fullname" . }}
+  labels:
+    {{- include "tfserving.labels" . | nindent 4 }}
+  annotations:
+    prometheus.io/scrape: 'true'
+    prometheus.io/port: '8501'
+    prometheus.io/path: '/monitoring/metrics'   
+spec:
+  ports:
+    - protocol: TCP
+      port: 8501
+      targetPort: 8501
+      name: serving
+    - protocol: TCP
+      port: 8500
+      targetPort: 8500
+      name: api 
+  selector:
+    {{- include "tfserving.selectorLabels" . | nindent 6 }}
+  type: ClusterIP
+  sessionAffinity: None
+---
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: {{ include "tfserving.fullname" . }}
+  labels:
+    {{- include "tfserving.labels" . | nindent 4 }}
+  annotations:
+    openshift.io/host.generated: 'true'
+spec:
+  host: null
+  subdomain: ''
+  to:
+    kind: Service
+    name: {{ include "tfserving.fullname" . }}
+    weight: 100
+  port:
+    targetPort: 8501
+  tls:
+    insecureEdgeTerminationPolicy: Redirect
+    termination: edge
+  wildcardPolicy: None
+{{- end }}

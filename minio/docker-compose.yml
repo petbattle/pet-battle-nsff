@@ -1,0 +1,10 @@
+version: '3'
+services:
+  minio:
+    image: quay.io/eformat/mlminio:latest
+    ports:
+      - "9000:9000"
+    hostname: minio
+    volumes:
+    - /home/mike/git/pet-battle-nsfw/minio/minio-data:/data:z
+    command: ["server", "/data"]

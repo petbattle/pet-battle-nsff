@@ -1,0 +1,59 @@
+{{- if (lookup "operators.coreos.com/v1alpha1" "Subscription" "openshift-serverless" "serverless-operator" ) }}
+---
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: {{ include "tfserving.fullname" . }}
+  labels:
+    {{- include "tfserving.labels" . | nindent 4 }}
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/window: 120s
+        client.knative.dev/user-image: docker.io/tensorflow/serving:latest
+      creationTimestamp: null
+      generateName: {{ include "tfserving.fullname" . }}-
+    spec:
+      containerConcurrency: 0
+      containers:
+      - args:
+        - --model_config_file=s3://models/models.config
+        - --monitoring_config_file=s3://models/prometheus_config.config
+        - --rest_api_port=8501
+        command:
+        - tensorflow_model_server
+        env:
+        - name: AWS_ACCESS_KEY_ID
+          value: minio
+        - name: AWS_LOG_LEVEL
+          value: "3"
+        - name: AWS_REGION
+          value: us-east-1
+        - name: AWS_SECRET_ACCESS_KEY
+          value: minio123
+        - name: S3_ENDPOINT
+          value: minio-pb-nsff:9000
+        - name: S3_LOCATION
+          value: minio-pb-nsff:9000
+        - name: S3_REGION
+          value: us-east-1
+        - name: S3_USE_HTTPS
+          value: "0"
+        - name: S3_VERIFY_SSL
+          value: "0"
+        image: docker.io/tensorflow/serving:latest
+        name: tfserving
+        ports:
+        - containerPort: 8501
+        readinessProbe:
+          successThreshold: 1
+          tcpSocket:
+            port: 0
+        resources: {}
+      enableServiceLinks: false
+      timeoutSeconds: 300
+  traffic:
+  - latestRevision: true
+    percent: 100
+{{- end }}

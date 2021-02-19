@@ -1,0 +1,8 @@
+image:
+  minio:
+    image: docker.io/minio/minio:latest
+
+minio:
+  persistence:
+    accessModes: ReadWriteOnce
+    volumeSize: 5Gi
