@@ -40,7 +40,7 @@ helm install pb-api petbattle/pet-battle-api --version=1.0.8 --set nsff.enabled=
 
 ## NSFF setup locally
 
-Running in local containers using podman.
+Running in local containers using podman. You may need to adjust directories for your setup in the docker-compose.yaml file
 
 Minio S3
 ```bash
