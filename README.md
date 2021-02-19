@@ -15,7 +15,7 @@ The full deployment based on the diagram below can be found [here](https://githu
 
 ![pet-battle-nsfw-arch.png](pet-battle-nsfw-arch.png)
 
-## Installing
+## Installing on OpenShift
 
 Install using the helm3 chart.
 
