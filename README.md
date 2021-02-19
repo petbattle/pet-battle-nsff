@@ -150,4 +150,3 @@ curl -X POST -H "content-type: application/json" --data-binary @requests/pet-bat
 # Wrestling - Not Safe For Families
 curl -X POST -H "content-type: application/json" --data-binary @requests/pet-battle-api/cat-nsff-positive.json $HOST
 ```
-# pet-battle-nsff
