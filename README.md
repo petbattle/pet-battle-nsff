@@ -136,7 +136,7 @@ curl -s -k -H 'Content-Type: application/json' -H 'cache-control: no-cache' -H '
 }
 ```
 
-The predictions array is composed of two scores `[ sff, nsff ]` - sff and sff add to 1.
+The predictions array is composed of two scores `[ sff, nsff ]` - sff and nsff add to 1.
 
 The higher the `sff` values the safer the image is for families.
 
