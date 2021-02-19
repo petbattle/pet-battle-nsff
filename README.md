@@ -30,7 +30,12 @@ helm install pb-nsff petbattle/pet-battle-nsff --version=0.0.1
 
 You may also want to try it along with the Pet Battle API
 ```bash
-helm install pb-api petbattle/pet-battle-api --version=1.0.8 --set nsff.enabled=true
+# openshift knative
+HOST=$(kn service describe tensorflowserving-pb-nsff -o url)
+# openshift deployment
+HOST=$(oc get route tensorflowserving-pb-nsff -o custom-columns=ROUTE:.spec.host --no-headers)
+
+helm install pb-api petbattle/pet-battle-api --version=1.0.8 --set nsff.enabled=true --set nsff.apiHost=${HOST}
 ```
 
 ## NSFF setup locally
@@ -142,11 +147,37 @@ You can test against [PetBattleAPI](https://github.com/petbattle/pet-battle-api)
 Be sure to enable the `app.petbattle.nsff.enabled=true` flag in pet-battle-api and set the location of tfserving.
 
 ```bash
+# local
 HOST=http://localhost:8080/cats
+# openshift
+HOST=https://$(oc get route -l app.kubernetes.io/component=pet-battle-api -o custom-columns=ROUTE:.spec.host --no-headers)/cats
 
 # Daisy Cat - Safe for Families
 curl -X POST -H "content-type: application/json" --data-binary @requests/pet-battle-api/cat-nsff-negative.json $HOST
 
 # Wrestling - Not Safe For Families
 curl -X POST -H "content-type: application/json" --data-binary @requests/pet-battle-api/cat-nsff-positive.json $HOST
+```
+
+### Knative using cli
+
+You can also manually deploy the knative service using `kn` cli as long as you have minio deployed with the model
+```bash
+kn service create tensorflowserving-pb-nsff \
+  --image=docker.io/tensorflow/serving:latest \
+  --cmd "tensorflow_model_server" \
+  --arg "--model_config_file=s3://models/models.config" \
+  --arg "--monitoring_config_file=s3://models/prometheus_config.config" \
+  --arg "--rest_api_port=8501" \
+  --env S3_LOCATION=minio-pb-nsff:9000 \
+  --env AWS_ACCESS_KEY_ID=minio \
+  --env AWS_SECRET_ACCESS_KEY=minio123 \
+  --env AWS_REGION=us-east-1 \
+  --env S3_REGION=us-east-1 \
+  --env S3_ENDPOINT=minio-pb-nsff:9000 \
+  --env S3_USE_HTTPS="0" \
+  --env S3_VERIFY_SSL="0" \
+  --env AWS_LOG_LEVEL="3" \
+  --port 8501 \
+  --autoscale-window "120s"
 ```
