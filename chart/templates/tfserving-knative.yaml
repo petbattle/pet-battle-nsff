@@ -33,9 +33,9 @@ spec:
         - name: AWS_SECRET_ACCESS_KEY
           value: minio123
         - name: S3_ENDPOINT
-          value: minio-pb-nsff:9000
+          value: {{ include "minio.fullname" . }}:9000
         - name: S3_LOCATION
-          value: minio-pb-nsff:9000
+          value: {{ include "minio.fullname" . }}:9000
         - name: S3_REGION
           value: us-east-1
         - name: S3_USE_HTTPS
