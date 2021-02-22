@@ -25,7 +25,7 @@ Else a Kubernetes deployment is used if no operator can be found.
 oc new-project pet-battle-nsfw
 helm repo add eformat https://petbattle.github.io/helm-charts
 helm repo update
-helm install pb-nsff petbattle/pet-battle-nsff --version=0.0.1
+helm install pb-nsff petbattle/pet-battle-nsff --version=0.0.2
 ```
 
 You may also want to try it along with the Pet Battle API
