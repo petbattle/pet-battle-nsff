@@ -25,7 +25,7 @@ Else a Kubernetes deployment is used if no operator can be found.
 oc new-project pet-battle-nsfw
 helm repo add eformat https://petbattle.github.io/helm-charts
 helm repo update
-helm install pb-nsff petbattle/pet-battle-nsff --version=0.0.2
+helm upgrade --install pb-nsff petbattle/pet-battle-nsff --version=0.0.2
 ```
 
 You may also want to try it along with the Pet Battle API
@@ -35,7 +35,7 @@ HOST=$(kn service describe tensorflowserving-pb-nsff -o url)
 # openshift deployment
 HOST=$(oc get route tensorflowserving-pb-nsff -o custom-columns=ROUTE:.spec.host --no-headers)
 
-helm install pb-api petbattle/pet-battle-api --version=1.0.8 --set nsff.enabled=true --set nsff.apiHost=${HOST}
+helm upgrade --install pb-api petbattle/pet-battle-api --version=1.0.8 --set nsff.enabled=true --set nsff.apiHost=${HOST}
 ```
 
 ## NSFF setup locally
