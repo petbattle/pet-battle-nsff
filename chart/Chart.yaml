@@ -1,6 +1,6 @@
 apiVersion: v2
 name: pet-battle-nsff
-description: A Helm chart for installing NSFF Pet Battle AI-ML components
+description: Pet Battle AI-ML NSFF
 type: application
 version: 0.0.2
 appVersion: 0.0.1
